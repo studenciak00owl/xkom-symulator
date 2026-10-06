@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Symulator ekranu x-kom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: a dark showroom — the 1920×540 panel in a bezel is the hero, controls sit under it like a remote, rules table last. Single dark look by choice. */
+  :root {
+    --bg: #0d0d14;
+    --panel: #15151f;
+    --line: #2a2a3a;
+    --fg: #ecebf4;
+    --muted: #9796ab;
+    --accent: #ff2e88;
+    --accent-ink: #ffffff;
+    --violet: #8f63ff;
+    --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--font-ui); }
+  .page { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 40px; display: grid; gap: 22px; }
+  header { display: grid; gap: 4px; }
+  h1 { margin: 0; font-weight: 600; font-size: clamp(22px, 3vw, 30px); letter-spacing: -.01em; text-wrap: balance; }
+  header p { margin: 0; color: var(--muted); max-width: 70ch; }
+  .draft { display: inline-block; font: 500 11px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent);
+           border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); border-radius: 4px; padding: 5px 7px; justify-self: start; }
+
+  .bezel { background: #000; padding: clamp(6px, 1.1vw, 14px); border-radius: 12px; box-shadow: 0 0 0 1px var(--line), 0 28px 70px rgba(0, 0, 0, .55); }
+  #screen { position: relative; width: 100%; max-width: 100%; aspect-ratio: 1920 / 540; overflow: hidden; background: #000; }
+  #screen video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  #loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font: 13px var(--font-mono); }
+  .readout { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; font: 13px/1.4 var(--font-mono); color: var(--muted); min-height: 1.4em; }
+  .readout b { color: var(--fg); font-weight: 500; }
+  .now { display: inline-flex; align-items: center; gap: 8px; }
+  .now::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--violet); }
+  .now.trig::before { background: var(--accent); }
+
+  .remote { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 3fr) minmax(0, 1.4fr); gap: 14px; }
+  .group { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+  .group h2 { margin: 0; font: 500 11px/1.2 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  button { font: 500 14px/1.2 var(--font-ui); color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 8px;
+           padding: 9px 12px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
+  button:hover { border-color: var(--muted); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  button.flash { border-color: var(--accent); }
+  kbd { font: 500 11px/1 var(--font-mono); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 3px 5px; }
+  button.on kbd { color: var(--accent-ink); border-color: color-mix(in srgb, var(--accent-ink) 50%, transparent); }
+
+  .rules { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 14px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { font: 500 11px/1.2 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  td code { font: 13px var(--font-mono); color: var(--fg); }
+  td.m { color: var(--muted); }
+  .note { color: var(--muted); font-size: 13px; max-width: 80ch; margin: 0; }
+
+  .fs .page { max-width: none; padding: 0; }
+  .fs header, .fs .remote, .fs .rules, .fs .note, .fs .readout { display: none; }
+  .fs .bezel { padding: 0; border-radius: 0; box-shadow: none; }
+  .fs body, body.fs { display: grid; place-items: center; }
+
+  @media (max-width: 860px) { .remote { grid-template-columns: minmax(0, 1fr); } }
+</style>
+
+</head>
+<body>
+<div class="page">
+  <header>
+    <span class="draft">Wersja robocza · przed wdrożeniem</span>
+    <h1>Symulator ekranu przy stoisku x-kom</h1>
+    <p>Podgląd nowych animacji na panelu 1920×540, z tymi samymi regułami co w systemie. Kliknij przycisk albo użyj klawiatury, żeby zasymulować ruch przed ekranem lub podniesienie telefonu z półki. Klipy są bez dźwięku.</p>
+  </header>
+
+  <div class="bezel"><div id="screen"><div id="loading">Ładowanie klipów…</div></div></div>
+  <div class="readout"><span class="now" id="now"><b>spoczynek</b></span><span id="log"></span></div>
+
+  <div class="remote">
+    <section class="group">
+      <h2>Czujnik ruchu</h2>
+      <div class="btns"><button data-ev="M1234" id="b-m"><kbd>M</kbd>Ktoś podchodzi</button></div>
+    </section>
+    <section class="group">
+      <h2>Półka · podnieś telefon</h2>
+      <div class="btns">
+        <button data-ev="P_0_0"><kbd>1</kbd>Nothing Phone (4a)</button>
+        <button data-ev="P_0_1"><kbd>2</kbd>moto g15 power</button>
+        <button data-ev="P_0_2"><kbd>3</kbd>edge 60 fusion</button>
+        <button data-ev="P_0_3"><kbd>4</kbd>edge 60 fusion, granat</button>
+        <button data-ev="P_0_4"><kbd>5</kbd>edge 60 pro</button>
+        <button data-ev="P_0_5"><kbd>6</kbd>edge 70 pro</button>
+      </div>
+    </section>
+    <section class="group">
+      <h2>Odtwarzanie</h2>
+      <div class="btns">
+        <button id="demo"><kbd>D</kbd>Demo</button>
+        <button id="fade"><kbd>X</kbd>Przenikanie</button>
+        <button id="fsb"><kbd>F</kbd>Pełny ekran</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="rules">
+    <table>
+      <thead><tr><th>Sygnał z czujnika</th><th>Co pokazuje ekran</th><th>Czas</th><th>Priorytet</th><th>Blokada powtórzeń</th></tr></thead>
+      <tbody>
+        <tr><td class="m">brak sygnału</td><td>Spoczynek „Podejdź, unieś, sprawdź”</td><td>w pętli, 12 s</td><td class="m">—</td><td class="m">—</td></tr>
+        <tr><td><code>M1234</code> ruch (MMS)</td><td>„Śmiało, podnieś telefon”</td><td>8 s</td><td>niski</td><td>7 s po zakończeniu</td></tr>
+        <tr><td><code>P_0_0</code> … <code>P_0_5</code> podniesienie (TENSO)</td><td>Karta podniesionego modelu</td><td>10 s</td><td>wysoki, przerywa ruch</td><td class="m">brak</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Przenikanie to propozycja: dziś player przełącza klipy cięciem, a płynne przejście wymaga zmiany w odtwarzaczu. Klipy w symulatorze są w lżejszej jakości niż te, które trafią na ekran.</p>
+</div>
+
+<script>
+  // Same arbitration as the OS-CMS player: higher priority wins, equal priority
+  // (also the same signal again) restarts, a cooldown blocks repeats.
+  const IDLE = 'clips/xkom-idle-loop.mp4';
+  const MAP = {
+    M1234: { file: 'clips/xkom-ir-zaciekaw.mp4', label: 'ruch przed ekranem', holdMs: 8000, priority: 33, cooldownMs: 7000 },
+    P_0_0: { file: 'clips/xkom-slot1.mp4', label: 'Nothing Phone (4a)', holdMs: 10000, priority: 78, cooldownMs: 0 },
+    P_0_1: { file: 'clips/xkom-slot2.mp4', label: 'moto g15 power', holdMs: 10000, priority: 78, cooldownMs: 0 },
+    P_0_2: { file: 'clips/xkom-slot3.mp4', label: 'edge 60 fusion', holdMs: 10000, priority: 78, cooldownMs: 0 },
+    P_0_3: { file: 'clips/xkom-slot4.mp4', label: 'edge 60 fusion, granat', holdMs: 10000, priority: 78, cooldownMs: 0 },
+    P_0_4: { file: 'clips/xkom-slot5.mp4', label: 'edge 60 pro', holdMs: 10000, priority: 78, cooldownMs: 0 },
+    P_0_5: { file: 'clips/xkom-slot6.mp4', label: 'edge 70 pro', holdMs: 10000, priority: 78, cooldownMs: 0 },
+  };
+  const stage = document.getElementById('screen'), nowEl = document.getElementById('now'), logEl = document.getElementById('log');
+  let active = null, holdTimer = null, crossfade = false, cooldown = {}, current = null, firstShown = false;
+
+  function show(file) {
+    const v = document.createElement('video');
+    v.src = file; v.muted = true; v.loop = true; v.playsInline = true; v.autoplay = true; v.preload = 'auto';
+    v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
+    v.style.opacity = crossfade ? 0 : 1;
+    v.style.transition = crossfade ? 'opacity .4s ease' : 'none';
+    stage.appendChild(v); current = v;
+    v.addEventListener('playing', () => {
+      if (v !== current) return;
+      if (!firstShown) { firstShown = true; document.getElementById('loading')?.remove(); }
+      if (crossfade) requestAnimationFrame(() => { v.style.opacity = 1; });
+      const old = [...stage.querySelectorAll('video')].filter(x => x !== v);
+      setTimeout(() => old.forEach(o => o.remove()), crossfade ? 420 : 0);
+    }, { once: true });
+    v.play().catch(() => {});
+  }
+  function setNow(text, trig) { nowEl.innerHTML = '<b></b>'; nowEl.firstChild.textContent = text; nowEl.classList.toggle('trig', !!trig); }
+  function log(text) { logEl.textContent = new Date().toLocaleTimeString('pl-PL') + ' · ' + text; }
+  function idle() { active = null; show(IDLE); setNow('spoczynek', false); }
+  function trigger(ev) {
+    const m = MAP[ev], now = Date.now();
+    if (!m) return;
+    const btn = document.querySelector(`[data-ev="${ev}"]`);
+    if (btn) { btn.classList.add('flash'); setTimeout(() => btn.classList.remove('flash'), 300); }
+    if ((cooldown[ev] || 0) > now) return log(`${ev} pominięty: blokada powtórzeń jeszcze ${((cooldown[ev] - now) / 1000).toFixed(1)} s`);
+    if (active && active.until > now && active.priority > m.priority) return log(`${ev} pominięty: trwa ${active.ev} o wyższym priorytecie`);
+    if (active && active.until > now && active.cooldownMs) cooldown[active.ev] = now + active.cooldownMs;
+    cooldown[ev] = m.cooldownMs ? now + m.holdMs + m.cooldownMs : 0;
+    active = { ev, priority: m.priority, until: now + m.holdMs, cooldownMs: m.cooldownMs };
+    clearTimeout(holdTimer); holdTimer = setTimeout(idle, m.holdMs);
+    show(m.file); setNow(`${ev} · ${m.label}`, true); log(`${ev} → ${m.holdMs / 1000} s`);
+  }
+
+  document.querySelectorAll('[data-ev]').forEach(b => b.addEventListener('click', () => trigger(b.dataset.ev)));
+  const keys = { m: 'M1234', 1: 'P_0_0', 2: 'P_0_1', 3: 'P_0_2', 4: 'P_0_3', 5: 'P_0_4', 6: 'P_0_5' };
+  document.addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key.toLowerCase();
+    if (keys[k]) trigger(keys[k]);
+    else if (k === 'd') toggleDemo(); else if (k === 'x') toggleFade(); else if (k === 'f') toggleFs();
+    else if (k === 'escape') exitFs();
+  });
+
+  // Demo: someone walks up (the motion sensor repeats every ~3 s), then picks up phones.
+  let demoTimers = [];
+  const demoBtn = document.getElementById('demo');
+  function toggleDemo() {
+    if (demoTimers.length) { demoTimers.forEach(clearTimeout); demoTimers = []; demoBtn.classList.remove('on'); log('demo zatrzymane'); return; }
+    demoBtn.classList.add('on'); log('demo: ktoś podchodzi do stoiska');
+    const plan = [[3, 'M1234'], [6, 'M1234'], [9, 'M1234'], [12, 'P_0_0'], [15, 'M1234'], [24, 'P_0_4'], [36, 'M1234'], [39, 'M1234'],
+                  [42, 'M1234'], [46, 'M1234'], [49, 'M1234'], [52, 'P_0_1'], [58, 'P_0_5'], [70, 'P_0_2']];
+    const run = () => {
+      plan.forEach(([s, ev]) => demoTimers.push(setTimeout(() => trigger(ev), s * 1000)));
+      demoTimers.push(setTimeout(() => { if (demoBtn.classList.contains('on')) run(); }, 95000));
+    };
+    run();
+  }
+  const fadeBtn = document.getElementById('fade');
+  function toggleFade() { crossfade = !crossfade; fadeBtn.classList.toggle('on', crossfade); log(crossfade ? 'przenikanie włączone (propozycja)' : 'cięcie, jak w obecnym playerze'); }
+  function exitFs() { document.documentElement.classList.remove('fs'); if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}); }
+  function toggleFs() {
+    if (document.documentElement.classList.contains('fs')) return exitFs();
+    document.documentElement.classList.add('fs');
+    const r = document.documentElement.requestFullscreen?.();
+    if (r && r.catch) r.catch(() => {});
+  }
+  document.getElementById('fade').addEventListener('click', toggleFade);
+  document.getElementById('fsb').addEventListener('click', toggleFs);
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) document.documentElement.classList.remove('fs'); });
+  idle();
+</script>
+
+</body>
+</html>
